@@ -241,6 +241,7 @@ class BaseCacheTests:
     def test_data_types_unsafe_rejected(self):
         # Arbitrary functions and classes are blocked by SafeUnpickler (CVE-2025-69872)
         from diskcache.core import UnpicklingError
+
         cache.set('fn', f)
         with self.assertRaises(UnpicklingError):
             cache.get('fn')
@@ -252,6 +253,7 @@ class BaseCacheTests:
         # Django model instances use django.db.models.base.model_unpickle which
         # is not in the SafeUnpickler allowlist (CVE-2025-69872).
         from diskcache.core import UnpicklingError
+
         expensive_calculation.num_runs = 0
         Poll.objects.all().delete()
         my_poll = Poll.objects.create(question='Well?')
@@ -276,6 +278,7 @@ class BaseCacheTests:
         # Deferred querysets reference user model classes not in the SafeUnpickler
         # allowlist (CVE-2025-69872).
         from diskcache.core import UnpicklingError
+
         expensive_calculation.num_runs = 0
         Poll.objects.all().delete()
         Poll.objects.create(question='What?')

@@ -61,6 +61,7 @@ jobs:
       with:
         baseVersion: ${{ env.BASE_VERSION }}
         gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        releasesBranch: master
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -69,7 +70,7 @@ jobs:
 
     - name: Update package version
       run: |
-        sed -i "s/__version__ = '.*'/__version__ = '${{ steps.vtl.outputs.ver_semVerNoMeta }}'/" diskcache/__init__.py
+        sed -i "s/__version__ = '.*'/__version__ = '${{ steps.vtl.outputs.ver_semVerNoMetaPyPA }}'/" diskcache/__init__.py
 
     - name: Build package
       run: |

@@ -227,31 +227,39 @@ class BaseCacheTests:
         cache.close()
 
     def test_data_types(self):
-        # Many different data types can be cached
+        # Safe built-in types can be cached
         stuff = {
             'string': 'this is a string',
             'int': 42,
             'list': [1, 2, 3, 4],
             'tuple': (1, 2, 3, 4),
             'dict': {'A': 1, 'B': 2},
-            'function': f,
-            'class': C,
         }
         cache.set('stuff', stuff)
         self.assertEqual(cache.get('stuff'), stuff)
 
+    def test_data_types_unsafe_rejected(self):
+        # Arbitrary functions and classes are blocked by SafeUnpickler (CVE-2025-69872)
+        from diskcache.core import UnpicklingError
+
+        cache.set('fn', f)
+        with self.assertRaises(UnpicklingError):
+            cache.get('fn')
+        cache.set('cls', C)
+        with self.assertRaises(UnpicklingError):
+            cache.get('cls')
+
     def test_cache_read_for_model_instance(self):
-        # Don't want fields with callable as default to be called on cache read
+        # Django model instances use django.db.models.base.model_unpickle which
+        # is not in the SafeUnpickler allowlist (CVE-2025-69872).
+        from diskcache.core import UnpicklingError
+
         expensive_calculation.num_runs = 0
         Poll.objects.all().delete()
         my_poll = Poll.objects.create(question='Well?')
-        self.assertEqual(Poll.objects.count(), 1)
-        pub_date = my_poll.pub_date
         cache.set('question', my_poll)
-        cached_poll = cache.get('question')
-        self.assertEqual(cached_poll.pub_date, pub_date)
-        # We only want the default expensive calculation run once
-        self.assertEqual(expensive_calculation.num_runs, 1)
+        with self.assertRaises(UnpicklingError):
+            cache.get('question')
 
     def test_cache_write_for_model_instance_with_deferred(self):
         # Don't want fields with callable as default to be called on cache write
@@ -267,21 +275,17 @@ class BaseCacheTests:
         self.assertEqual(expensive_calculation.num_runs, 1)
 
     def test_cache_read_for_model_instance_with_deferred(self):
-        # Don't want fields with callable as default to be called on cache read
+        # Deferred querysets reference user model classes not in the SafeUnpickler
+        # allowlist (CVE-2025-69872).
+        from diskcache.core import UnpicklingError
+
         expensive_calculation.num_runs = 0
         Poll.objects.all().delete()
         Poll.objects.create(question='What?')
-        self.assertEqual(expensive_calculation.num_runs, 1)
         defer_qs = Poll.objects.all().defer('question')
-        self.assertEqual(defer_qs.count(), 1)
         cache.set('deferred_queryset', defer_qs)
-        self.assertEqual(expensive_calculation.num_runs, 1)
-        runs_before_cache_read = expensive_calculation.num_runs
-        cache.get('deferred_queryset')
-        # We only want the default expensive calculation run on creation and set
-        self.assertEqual(
-            expensive_calculation.num_runs, runs_before_cache_read
-        )
+        with self.assertRaises(UnpicklingError):
+            cache.get('deferred_queryset')
 
     def test_expiration(self):
         # Cache values can be set to expire
@@ -869,14 +873,12 @@ class BaseCacheTests:
         self.assertEqual(caches['custom_key2'].get('answer2'), 42)
 
     def test_cache_write_unpicklable_object(self):
-        fetch_middleware = FetchFromCacheMiddleware(empty_response)
+        # HttpResponse and SimpleCookie are not in the SafeUnpickler allowlist
+        # (CVE-2025-69872). Writing succeeds but reading raises UnpicklingError.
+        from diskcache.core import UnpicklingError
 
         request = self.factory.get('/cache/test')
         request._cache_update_cache = True
-        get_cache_data = FetchFromCacheMiddleware(
-            empty_response
-        ).process_request(request)
-        self.assertIsNone(get_cache_data)
 
         content = 'Testing cookie serialization.'
 
@@ -885,19 +887,11 @@ class BaseCacheTests:
             response.set_cookie('foo', 'bar')
             return response
 
-        update_middleware = UpdateCacheMiddleware(get_response)
-        response = update_middleware(request)
+        UpdateCacheMiddleware(get_response)(request)
 
-        get_cache_data = fetch_middleware.process_request(request)
-        self.assertIsNotNone(get_cache_data)
-        self.assertEqual(get_cache_data.content, content.encode())
-        self.assertEqual(get_cache_data.cookies, response.cookies)
-
-        UpdateCacheMiddleware(lambda req: get_cache_data)(request)
-        get_cache_data = fetch_middleware.process_request(request)
-        self.assertIsNotNone(get_cache_data)
-        self.assertEqual(get_cache_data.content, content.encode())
-        self.assertEqual(get_cache_data.cookies, response.cookies)
+        fetch_middleware = FetchFromCacheMiddleware(empty_response)
+        with self.assertRaises(UnpicklingError):
+            fetch_middleware.process_request(request)
 
     def test_add_fail_on_pickleerror(self):
         # Shouldn't fail silently if trying to cache an unpicklable type.

@@ -1,5 +1,24 @@
+mapped-diskcache: Temporary Security Fork
+==========================================
+
+.. note::
+
+   **This is a temporary fork of** `grantjenks/python-diskcache`_ **maintained by**
+   `Mapped <https://mapped.com>`_ **solely to ship a CVE fix.**
+
+   The upstream repo is unmaintained and has not merged `PR #364`_ which fixes
+   `CVE-2025-69872`_ (unsafe pickle deserialization). This fork exists only until
+   that PR is merged upstream, at which point this package will be retired and
+   users should switch back to the original ``diskcache``.
+
+   **Do not use this package for anything other than the CVE fix.**
+
+.. _grantjenks/python-diskcache: https://github.com/grantjenks/python-diskcache
+.. _PR #364: https://github.com/grantjenks/python-diskcache/pull/364
+.. _CVE-2025-69872: https://www.cve.org/CVERecord?id=CVE-2025-69872
+
 DiskCache: Disk Backed Cache
-============================
+=============================
 
 `DiskCache`_ is an Apache2 licensed disk and file backed cache library, written
 in pure-Python, and compatible with Django.

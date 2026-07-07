@@ -1,5 +1,5 @@
-mapped-diskcache: Temporary Security Fork
-==========================================
+diskcache: Temporary Security Fork
+===================================
 
 .. note::
 
@@ -12,6 +12,27 @@ mapped-diskcache: Temporary Security Fork
    users should switch back to the original ``diskcache``.
 
    **Do not use this package for anything other than the CVE fix.**
+
+Using this fork as a drop-in override
+--------------------------------------
+
+Because this fork is published under the same ``diskcache`` package name, you
+can use it to replace the vulnerable upstream version without changing any
+import statements or adding it as a direct dependency.
+
+**uv** (``pyproject.toml``)::
+
+    [tool.uv]
+    override-dependencies = ["diskcache>=6.0.0"]
+
+    [[tool.uv.sources]]
+    diskcache = { git = "https://github.com/mapped/python-diskcache", branch = "master" }
+
+**pip** (``requirements.txt``)::
+
+    diskcache @ git+https://github.com/mapped/python-diskcache@master
+
+**Poetry** — not supported. Poetry has no package-name override mechanism.
 
 .. _grantjenks/python-diskcache: https://github.com/grantjenks/python-diskcache
 .. _PR #364: https://github.com/grantjenks/python-diskcache/pull/364

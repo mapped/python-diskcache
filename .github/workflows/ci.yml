@@ -44,13 +44,12 @@ jobs:
     - name: Run tests
       run: tox -e py
 
-  publish:
+  tag:
     needs: tests
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
 
     steps:
     - uses: actions/checkout@v4
@@ -62,20 +61,3 @@ jobs:
         baseVersion: ${{ env.BASE_VERSION }}
         gitHubToken: ${{ secrets.GITHUB_TOKEN }}
         releasesBranch: master
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Update package version
-      run: |
-        sed -i "s/__version__ = '.*'/__version__ = '${{ steps.vtl.outputs.ver_semVerNoMetaPyPA }}'/" diskcache/__init__.py
-
-    - name: Build package
-      run: |
-        pip install build
-        python -m build
-
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
